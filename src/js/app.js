@@ -66,6 +66,9 @@ async function init() {
 
       // Load real data from Supabase
       await store.loadFromSupabase(user.id);
+      // Initialize Realtime Sync
+      await store.initRealtime(user.id);
+      
       showMainApp();
     } else {
       showAuthScreen();
@@ -76,6 +79,8 @@ async function init() {
       if (event === 'SIGNED_OUT' || !session) {
         AppState.currentUser = null;
         AppState.isLoggedIn = false;
+        store.cleanupRealtime();
+        onesignal.logout();
         showAuthScreen();
       }
     });
@@ -459,51 +464,6 @@ function initEventListeners() {
     });
   }
 
-  // Event form
-  const eventForm = $('#event-form');
-  if (eventForm) {
-    eventForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const title = $('#event-title').value;
-      const description = $('#event-description').value;
-      const start = $('#event-start').value;
-      const end = $('#event-end').value || start;
-      const location = $('#event-location').value;
-      const category = $('#event-category').value;
-      const userId = AppState.currentUser?.id;
-
-      try {
-        const newEvent = await supabaseCreateEvent({
-          user_id: userId,
-          title,
-          description,
-          start_time: new Date(start).toISOString(),
-          end_time: new Date(end).toISOString(),
-          location,
-          category
-        });
-
-        store.setState({ events: [...store.getState().events, newEvent] }, 'add-event');
-        window.showToast('Etkinlik oluşturuldu!');
-
-        const isPublic = $('#event-is-public')?.checked;
-        if (isPublic) {
-          onesignal.sendNotification(`Yeni Etkinlik: ${title}`, description, true);
-        }
-      } catch (err) {
-        console.error('Event save error:', err);
-        window.showToast('Etkinlik kaydedilemedi: ' + (err.message || 'Bilinmeyen hata'));
-      }
-
-      closeModal();
-
-      if (AppState.currentTab === 'calendar') {
-        renderCalendar();
-      }
-    });
-  }
-
   // Profile modal functions
   initProfileModal();
 }
@@ -549,9 +509,41 @@ function initModalForms() {
       const userId = AppState.currentUser?.id;
 
       try {
+        // Handle Attachments Upload
+        const fileInput = $('#task-attachment');
+        let attachments = [];
+        const { uploadFile } = await import('./utils/supabase.js');
+
+        if (fileInput && fileInput.files.length > 0) {
+          const uploadBtn = $('#task-form').querySelector('button[type="submit"]');
+          const origText = uploadBtn.innerHTML;
+          uploadBtn.innerHTML = 'Dosyalar Yükleniyor...';
+          uploadBtn.disabled = true;
+
+          for (let i = 0; i < fileInput.files.length; i++) {
+            const file = fileInput.files[i];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `task-${Date.now()}-${i}.${fileExt}`;
+            const filePath = `${userId}/${fileName}`;
+            const publicUrl = await uploadFile('attachments', filePath, file);
+            attachments.push({ name: file.name, url: publicUrl, type: file.type });
+          }
+
+          uploadBtn.innerHTML = origText;
+          uploadBtn.disabled = false;
+        }
+
         if (editTaskId) {
           // Update existing task in Supabase
-          const updated = await supabaseUpdateTask(editTaskId, { title, description, priority, status });
+          // If editing, we append new attachments to existing ones or just replace (simplification: replace/add new)
+          // For a true system we'd merge, but for this step we will just set the new ones if any were uploaded
+          const updatePayload = { title, description, priority, status };
+          if (attachments.length > 0) {
+             const existState = store.getState().tasks.find(t => t.id === editTaskId);
+             updatePayload.attachments = [...(existState?.attachments || []), ...attachments];
+          }
+
+          const updated = await supabaseUpdateTask(editTaskId, updatePayload);
           const state = store.getState();
           const tasks = state.tasks.map(t =>
             t.id === editTaskId ? { ...t, ...updated } : t
@@ -565,7 +557,8 @@ function initModalForms() {
             title,
             description,
             priority,
-            status
+            status,
+            attachments
           });
 
           store.setState({ tasks: [newTask, ...store.getState().tasks] }, 'add-task');
@@ -573,22 +566,47 @@ function initModalForms() {
 
           const isPublic = $('#task-is-public')?.checked;
           if (isPublic) {
-            onesignal.sendNotification(`Yeni Görev: ${title}`, description, true);
+            onesignal.sendNotification(`Yeni Görev: ${title}`, description, false, [userId]);
           }
         }
       } catch (err) {
         console.error('Task save error:', err);
         window.showToast('Görev kaydedilemedi: ' + (err.message || 'Bilinmeyen hata'));
+        const uploadBtn = $('#task-form').querySelector('button[type="submit"]');
+        if(uploadBtn) {
+           uploadBtn.innerHTML = 'Kaydet';
+           uploadBtn.disabled = false;
+        }
       }
 
       closeModal();
       taskForm.reset();
+      const taskFileDisplay = $('#task-file-name-display');
+      if (taskFileDisplay) taskFileDisplay.textContent = 'Dosya seçmek için tıklayın';
       delete modal.dataset.editTaskId;
 
-      if (AppState.currentTab === 'today') {
-        renderToday();
+      if (AppState.currentTab === 'today' || AppState.currentTab === 'workspace') {
+        if (typeof renderToday === 'function') renderToday();
+        if (typeof renderWorkspace === 'function') renderWorkspace();
       }
     });
+
+    // File Input UI Handler for Tasks
+    const taskDropArea = $('#file-drop-area');
+    const taskFileInput = $('#task-attachment');
+    const taskFileNameDisplay = $('#task-file-name-display');
+
+    if (taskDropArea && taskFileInput) {
+      taskDropArea.addEventListener('click', () => taskFileInput.click());
+      taskFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          const names = Array.from(e.target.files).map(f => f.name).join(', ');
+          if (taskFileNameDisplay) taskFileNameDisplay.textContent = names;
+        } else {
+          if (taskFileNameDisplay) taskFileNameDisplay.textContent = 'Dosya seçmek için tıklayın';
+        }
+      });
+    }
   }
 }
 
@@ -791,11 +809,81 @@ function initProfileModal() {
 
   // Also allow clicking on the preview container
   const previewContainer = $('.profile-avatar-preview');
+  const uploadBtn = $('#avatar-upload-btn');
+  const fileInput = $('#profile-avatar-upload');
+
+  const openAvatarPicker = () => {
+    if (avatarOptions) {
+      avatarOptions.style.display = avatarOptions.style.display === 'none' ? 'flex' : 'none';
+    }
+  };
+
   if (previewContainer) {
     previewContainer.style.cursor = 'pointer';
-    previewContainer.addEventListener('click', () => {
-      if (avatarOptions) {
-        avatarOptions.style.display = avatarOptions.style.display === 'none' ? 'flex' : 'none';
+    previewContainer.addEventListener('click', openAvatarPicker);
+  }
+
+  // Handle actual file upload
+  if (uploadBtn && fileInput) {
+    uploadBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const user = AppState.currentUser;
+      if (!user) return;
+
+      try {
+        const uploadBtnEl = $('#avatar-upload-btn');
+        const originalText = uploadBtnEl.innerHTML;
+        uploadBtnEl.innerHTML = '<span class="loader" style="width: 14px; height: 14px; border-width: 2px; margin-right: 4px;"></span> Yükleniyor...';
+        uploadBtnEl.disabled = true;
+
+        // Upload to bucket 'avatars'
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+        
+        // Use full JS import context since updateProfileAvatar is exported
+        const { uploadFile, updateProfileAvatar } = await import('./utils/supabase.js');
+        const publicUrl = await uploadFile('avatars', filePath, file);
+        
+        // Immedately update profile in Supabase
+        await updateProfileAvatar(user.id, publicUrl);
+        
+        // Update local object & UI
+        selectedAvatar = null; // Clear dicebear seed
+        const preview = $('#profile-avatar-preview');
+        if (preview) {
+          preview.src = publicUrl;
+        }
+
+        // Apply updated user state context
+        const updatedUser = { ...AppState.currentUser, avatar: publicUrl };
+        localStorage.setItem('lifesync_user', JSON.stringify(updatedUser));
+        AppState.currentUser = updatedUser;
+        
+        // Update Navbar Avatar
+        const navAvatar = $('#nav-user-avatar');
+        if (navAvatar) navAvatar.src = publicUrl;
+
+        window.showToast('Profil fotoğrafınız başarıyla güncellendi.');
+        
+        uploadBtnEl.innerHTML = originalText;
+        uploadBtnEl.disabled = false;
+        
+        if (avatarOptions) avatarOptions.style.display = 'none';
+
+      } catch (err) {
+        console.error('Avatar upload failed:', err);
+        window.showToast('Fotoğraf yüklenemedi: ' + err.message);
+        const uploadBtnEl = $('#avatar-upload-btn');
+        uploadBtnEl.innerHTML = 'Fotoğraf Yükle';
+        uploadBtnEl.disabled = false;
       }
     });
   }
@@ -827,6 +915,8 @@ function loadProfileData() {
     if (user.avatar.includes('dicebear')) {
       const match = user.avatar.match(/seed=([^&]+)/);
       if (match) selectedAvatar = match[1];
+    } else {
+      selectedAvatar = null;
     }
   }
 }

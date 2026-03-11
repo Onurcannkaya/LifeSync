@@ -139,6 +139,14 @@ function renderKanbanView(container, tasks) {
                 <div class="kanban-task-tags">
                   <span class="kanban-tag">${task.priority || 'medium'}</span>
                 </div>
+                ${task.attachments && task.attachments.length > 0 ? `
+                  <div class="kanban-task-attachments" title="${task.attachments.length} dosya eklendi" style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary); font-size: 11px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    </svg>
+                    ${task.attachments.length}
+                  </div>
+                ` : ''}
               </div>
             </div>
           `).join('')}
@@ -192,15 +200,32 @@ function initDragAndDrop(board) {
         const taskId = draggedItem.dataset.id;
         const newStatus = column.dataset.status;
 
-        // Update task status in store
-        await storage.updateTask(taskId, { status: newStatus });
+        // Check if the status actually changed
+        const currentTask = store.getState().tasks.find(t => t.id === taskId);
+        if (currentTask && currentTask.status === newStatus) return;
 
-        // Update memory store as well
-        const updatedTasks = store.getState().tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
-        store.setState({ tasks: updatedTasks }, 'update-task-status');
+        // 1. Optimistic Update (Update memory store instantly so UI feels snappy)
+        const updatedTasks = store.getState().tasks.map(t => 
+          t.id === taskId ? { ...t, status: newStatus } : t
+        );
+        store.setState({ tasks: updatedTasks }, 'optimistic-drag-drop');
+        renderWorkspace(); // Force re-render instantly
 
-        // Refresh the view
-        renderWorkspace();
+        try {
+          // 2. Async Server Update + IndexedDB Fallback
+          const { updateTask } = await import('../utils/supabase.js');
+          await updateTask(taskId, { status: newStatus });
+          await storage.updateTask(taskId, { status: newStatus });
+        } catch (error) {
+          console.error('Failed to update task status in DB:', error);
+          // Rollback if DB update fails
+          const rollbackTasks = store.getState().tasks.map(t => 
+            t.id === taskId && currentTask ? { ...t, status: currentTask.status } : t
+          );
+          store.setState({ tasks: rollbackTasks }, 'rollback-drag-drop');
+          renderWorkspace();
+          // Optional: Show toast notification to user about failure
+        }
       }
     });
   });

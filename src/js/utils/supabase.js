@@ -63,6 +63,27 @@ export async function getSession() {
 }
 
 /**
+ * Update the user's avatar URL in both Auth metadata and public.users table.
+ */
+export async function updateProfileAvatar(userId, avatarUrl) {
+  // Update Auth identity (metadata)
+  const { error: authError } = await supabase.auth.updateUser({
+    data: { avatar: avatarUrl }
+  });
+  if (authError) throw authError;
+
+  // Update public API table
+  const { error: dbError } = await supabase
+    .from('users')
+    .update({ avatar_url: avatarUrl })
+    .eq('id', userId);
+  
+  if (dbError) {
+    console.error('Failed to update public users table avatar:', dbError);
+  }
+}
+
+/**
  * Listen for auth state changes (login, logout, token refresh).
  * Returns an unsubscribe function.
  */
@@ -114,6 +135,60 @@ export async function deleteTask(id) {
     .delete()
     .eq('id', id);
   if (error) throw error;
+}
+
+// ═══════════════════════════════════════════
+//  REALTIME SUBSCRIPTIONS
+// ═══════════════════════════════════════════
+
+let tasksChannel = null;
+
+/**
+ * Subscribe to realtime changes on the tasks table for a specific user.
+ * @param {string} userId - The user ID to filter tasks by
+ * @param {function} callback - Function to call when a change occurs (payload) => void
+ */
+export function subscribeToTasks(userId, callback) {
+  if (tasksChannel) {
+    supabase.removeChannel(tasksChannel);
+  }
+
+  tasksChannel = supabase
+    .channel('public:tasks')
+    .on(
+      'postgres_changes',
+      {
+        event: '*', // Listen to INSERT, UPDATE, and DELETE
+        schema: 'public',
+        table: 'tasks',
+        filter: `user_id=eq.${userId}`
+      },
+      (payload) => {
+        // console.log('Realtime tasks update received!', payload);
+        if (callback) callback(payload);
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('Successfully subscribed to realtime tasks channel.');
+      } else if (status === 'CLOSED') {
+        console.log('Realtime tasks channel closed.');
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('Realtime tasks channel error.');
+      }
+    });
+
+  return tasksChannel;
+}
+
+/**
+ * Unsubscribe from the tasks channel to clean up listeners.
+ */
+export function unsubscribeFromTasks() {
+  if (tasksChannel) {
+    supabase.removeChannel(tasksChannel);
+    tasksChannel = null;
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -334,4 +409,37 @@ export async function rejectFriend(requestId) {
     .delete()
     .eq('id', requestId);
   if (error) throw error;
+}
+
+// ═══════════════════════════════════════════
+//  STORAGE — BUCKET UPLOADS
+// ═══════════════════════════════════════════
+
+/**
+ * Upload a file to a specific Supabase Storage bucket.
+ * @param {string} bucketName - 'avatars' or 'attachments'
+ * @param {string} filePath - Path within the bucket (e.g., 'user_id/filename.png')
+ * @param {File} file - The File object from the input element
+ * @returns {string} The public URL of the uploaded file.
+ */
+export async function uploadFile(bucketName, filePath, file) {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    const { data: publicData } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(data.path);
+
+    return publicData.publicUrl;
+  } catch (err) {
+    console.error(`Error uploading to ${bucketName}:`, err);
+    throw err;
+  }
 }

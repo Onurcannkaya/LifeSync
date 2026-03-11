@@ -35,6 +35,19 @@ export const onesignal = {
   },
 
   /**
+   * Remove the link between the device and the Supabase user upon logout.
+   */
+  logout() {
+    if (!this.initialized) return;
+    
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push((OneSignal) => {
+      OneSignal.logout();
+      console.log('OneSignal external ID unlinked.');
+    });
+  },
+
+  /**
    * Send a real push notification via OneSignal REST API.
    * @param {string} title      Notification heading
    * @param {string} message    Notification body
@@ -56,9 +69,9 @@ export const onesignal = {
     if (isPublic) {
       // Send to all subscribed users
       body.included_segments = ['All'];
-    } else if (assignees.length > 0) {
+    } else if (assignees && assignees.length > 0) {
       // Send to specific users by their Supabase UUID (external_id)
-      body.include_aliases = { external_id: assignees };
+      body.include_external_user_ids = assignees;
       body.target_channel = 'push';
     } else {
       console.log('[OneSignal] No recipients specified, skipping.');

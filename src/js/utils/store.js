@@ -130,9 +130,53 @@ export class Store {
     }
   }
 
+  // ═══════════════════════════════════════════
+  //  REALTIME SYNC
+  // ═══════════════════════════════════════════
+
+  async initRealtime(userId) {
+    try {
+      const { subscribeToTasks } = await import('./supabase.js');
+      
+      subscribeToTasks(userId, (payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        const currentTasks = [...this.state.tasks];
+        
+        if (eventType === 'INSERT') {
+          // Add new task if it doesn't already exist
+          if (!currentTasks.some(t => t.id === newRecord.id)) {
+            this.setState({ tasks: [newRecord, ...currentTasks] }, 'realtime-insert');
+          }
+        } else if (eventType === 'UPDATE') {
+          // Update existing task
+          const updatedTasks = currentTasks.map(t => 
+            t.id === newRecord.id ? { ...t, ...newRecord } : t
+          );
+          this.setState({ tasks: updatedTasks }, 'realtime-update');
+        } else if (eventType === 'DELETE') {
+          // Remove deleted task
+          const filteredTasks = currentTasks.filter(t => t.id !== oldRecord.id);
+          this.setState({ tasks: filteredTasks }, 'realtime-delete');
+        }
+      });
+    } catch (err) {
+      console.error('Failed to init realtime sync:', err);
+    }
+  }
+
+  async cleanupRealtime() {
+    try {
+      const { unsubscribeFromTasks } = await import('./supabase.js');
+      unsubscribeFromTasks();
+    } catch (err) {
+      console.error('Failed to cleanup realtime sync:', err);
+    }
+  }
+
   clear() {
     this.state = {};
     this.history = [];
+    this.cleanupRealtime();
   }
 }
 
