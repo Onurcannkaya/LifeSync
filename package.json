@@ -1,0 +1,29 @@
+{
+  "name": "lifesync-pwa",
+  "version": "1.0.0",
+  "description": "Akıllı PWA Asistanı - Görevler, Takvim, Projeler",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js",
+    "test": "vitest"
+  },
+  "keywords": [
+    "pwa",
+    "productivity",
+    "task-manager",
+    "calendar"
+  ],
+  "author": "Onurcan KAYA",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.55.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.0"
+  }
+}

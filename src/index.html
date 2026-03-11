@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="description" content="LifeSync - Akıllı PWA Asistanı">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="LifeSync">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Outfit:wght@100..900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="./css/main.css">
+  <title>LifeSync - Akıllı PWA Asistanı</title>
+  <!-- OneSignal SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then((registration) => {
+          console.log('[SW] Registered with scope:', registration.scope);
+        }).catch((error) => {
+          console.error('[SW] Registration failed:', error);
+        });
+      });
+    }
+  </script>
+</head>
+
+<body>
+  <!-- SPLASH SCREEN -->
+  <div id="app-splash" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg-primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.4s ease;">
+    <svg width="64" height="64" viewBox="0 0 32 32" fill="none" class="splash-logo">
+      <rect width="32" height="32" rx="8" fill="url(#splash-grad)" />
+      <path d="M10 16L14 20L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <defs>
+        <linearGradient id="splash-grad" x1="0" y1="0" x2="32" y2="32">
+          <stop offset="0%" stop-color="#06b6d4" />
+          <stop offset="100%" stop-color="#3b82f6" />
+        </linearGradient>
+      </defs>
+    </svg>
+    <div style="margin-top:24px;width:32px;height:32px;border:3px solid var(--border-color);border-top-color:var(--accent-primary);border-radius:50%;animation:spin 1s linear infinite;"></div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } } .splash-logo { animation: pulse 2s ease infinite; } @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }</style>
+  </div>
+
+  <div id="app" class="app-container" style="display:none;">
+
+    <!-- AUTH SCREEN -->
+    <div class="auth-container" id="auth-screen">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <svg width="48" height="48" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="url(#logo-grad)" />
+            <path d="M10 16L14 20L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round"
+              stroke-linejoin="round" />
+            <defs>
+              <linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32">
+                <stop offset="0%" stop-color="#06b6d4" />
+                <stop offset="100%" stop-color="#3b82f6" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <span class="auth-logo-text">LifeSync</span>
+        </div>
+
+        <h2 class="auth-title">Hoş Geldiniz</h2>
+        <p class="auth-subtitle">Hesabınıza giriş yapın veya yeni hesap oluşturun</p>
+
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-auth="login">Giriş Yap</button>
+          <button class="auth-tab" data-auth="register">Kayıt Ol</button>
+        </div>
+
+        <!-- Login Form -->
+        <form class="auth-form active" id="login-form">
+          <div class="form-group">
+            <label for="login-email">E-posta</label>
+            <input type="email" id="login-email" placeholder="ornek@mail.com" required>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Şifre</label>
+            <input type="password" id="login-password" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Giriş Yap</button>
+        </form>
+
+        <!-- Register Form -->
+        <form class="auth-form" id="register-form">
+          <div class="form-group">
+            <label for="register-name">Ad Soyad</label>
+            <input type="text" id="register-name" placeholder="Ahmet Yılmaz" required>
+          </div>
+          <div class="form-group">
+            <label for="register-email">E-posta</label>
+            <input type="email" id="register-email" placeholder="ornek@mail.com" required>
+          </div>
+          <div class="form-group">
+            <label for="register-password">Şifre</label>
+            <input type="password" id="register-password" placeholder="••••••••" required>
+          </div>
+          <div class="form-group">
+            <label for="register-team">Takım Kodu (Opsiyonel)</label>
+            <input type="text" id="register-team" placeholder="Takımınız yoksa boş bırakın">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Hesap Oluştur</button>
+        </form>
+
+        <!-- Social login removed for production -->
+      </div>
+    </div>
+
+    <!-- MAIN APP (Hidden until login) -->
+    <div id="main-app" style="display: none;">
+
+      <!-- Sidebar (Desktop) -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <div class="logo-icon">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="url(#logo-gradient2)" />
+                <path d="M10 16L14 20L22 12" stroke="white" stroke-width="2.5" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <defs>
+                  <linearGradient id="logo-gradient2" x1="0" y1="0" x2="32" y2="32">
+                    <stop offset="0%" stop-color="#06b6d4" />
+                    <stop offset="100%" stop-color="#3b82f6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <span class="logo-text">LifeSync</span>
+          </div>
+          <button class="sidebar-toggle" id="sidebar-toggle">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item active" data-tab="today">
+            <div class="nav-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+            </div>
+            <span>Bugün</span>
+          </a>
+          <a href="#" class="nav-item" data-tab="calendar">
+            <div class="nav-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+            </div>
+            <span>Takvim</span>
+          </a>
+          <a href="#" class="nav-item" data-tab="workspace">
+            <div class="nav-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <span>İş İstasyonu</span>
+          </a>
+          <a href="#" class="nav-item" data-tab="network">
+            <div class="nav-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <span>Ağım</span>
+          </a>
+          <a href="#" class="nav-item" data-tab="archive">
+            <div class="nav-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="21 8 21 21 3 21 3 8" />
+                <rect x="1" y="3" width="22" height="5" />
+                <path d="M10 12h4" />
+              </svg>
+            </div>
+            <span>Arşiv</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="user-profile" id="user-profile-btn">
+            <div class="user-avatar">
+              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=current" alt="Kullanıcı" id="nav-user-avatar">
+              <span class="status-dot online" id="nav-user-status"></span>
+            </div>
+            <div class="user-info">
+              <span class="user-name" id="nav-user-name">Ahmet Yılmaz</span>
+              <span class="user-role" id="nav-user-role">Proje Yöneticisi</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+          <div class="header-left">
+            <button class="menu-toggle" id="menu-toggle">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12h18M3 6h18M3 18h18" />
+              </svg>
+            </button>
+            <h1 class="page-title" id="page-title">Bugün</h1>
+          </div>
+          <div class="header-right">
+            <div class="search-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input type="text" placeholder="Ara..." id="global-search">
+            </div>
+            <button class="notification-btn" id="notification-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span class="notification-badge" id="notification-badge">3</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Tab Content -->
+        <div class="content-area" id="content-area">
+
+          <!-- Today Tab -->
+          <section class="tab-content active" id="tab-today">
+            <div class="today-grid">
+              <!-- Enhanced Quick Add -->
+              <div class="quick-add-floating">
+                <div class="quick-add-header">
+                  <span class="quick-add-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Yeni Görev Ekle
+                  </span>
+                </div>
+                <form class="quick-add-form" id="quick-add-form">
+                  <input type="text" class="quick-add-input" placeholder="Görev başlığı girin..." id="quick-task-input">
+                  <select class="quick-add-select" id="quick-priority">
+                    <option value="low">Düşük Öncelik</option>
+                    <option value="medium" selected>Orta Öncelik</option>
+                    <option value="high">Yüksek Öncelik</option>
+                    <option value="urgent">Acil</option>
+                  </select>
+                  <button type="submit" class="btn btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Ekle
+                  </button>
+                </form>
+              </div>
+
+              <!-- Summary Cards -->
+              <div class="summary-cards">
+                <div class="summary-card">
+                  <div class="summary-icon bg-cyan">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 11l3 3L22 4" />
+                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    </svg>
+                  </div>
+                  <div class="summary-content">
+                    <span class="summary-value" id="total-tasks">12</span>
+                    <span class="summary-label">Toplam Görev</span>
+                  </div>
+                </div>
+                <div class="summary-card">
+                  <div class="summary-icon bg-emerald">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                  </div>
+                  <div class="summary-content">
+                    <span class="summary-value" id="completed-tasks">8</span>
+                    <span class="summary-label">Tamamlandı</span>
+                  </div>
+                </div>
+                <div class="summary-card">
+                  <div class="summary-icon bg-amber">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </div>
+                  <div class="summary-content">
+                    <span class="summary-value" id="pending-tasks">4</span>
+                    <span class="summary-label">Bekleyen</span>
+                  </div>
+                </div>
+                <div class="summary-card">
+                  <div class="summary-icon bg-blue">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" />
+                      <path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                  </div>
+                  <div class="summary-content">
+                    <span class="summary-value" id="today-events">2</span>
+                    <span class="summary-label">Bugünkü Etkinlik</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Today's Tasks -->
+              <div class="tasks-section">
+                <div class="section-header">
+                  <h3 class="section-title">Bugünkü Görevler</h3>
+                  <div class="task-filters">
+                    <button class="filter-btn active" data-filter="all">Tümü</button>
+                    <button class="filter-btn" data-filter="pending">Bekleyen</button>
+                    <button class="filter-btn" data-filter="completed">Tamamlandı</button>
+                  </div>
+                </div>
+                <div class="tasks-list" id="today-tasks-list">
+                  <!-- Tasks will be rendered here -->
+                </div>
+              </div>
+
+              <!-- Right Column -->
+              <div class="today-sidebar">
+                <!-- Mini Calendar -->
+                <div class="mini-calendar-card">
+                  <div class="mini-calendar-header">
+                    <h4 id="mini-calendar-month">Mart 2026</h4>
+                    <div class="mini-calendar-nav">
+                      <button class="mini-nav-btn" id="mini-prev">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <path d="M15 18l-6-6 6-6" />
+                        </svg>
+                      </button>
+                      <button class="mini-nav-btn" id="mini-next">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2">
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mini-calendar-grid" id="mini-calendar">
+                    <!-- Calendar will be rendered here -->
+                  </div>
+                </div>
+
+                <!-- Upcoming Events -->
+                <div class="upcoming-events-card">
+                  <h4 class="card-title">Yaklaşan Etkinlikler</h4>
+                  <div class="events-list" id="upcoming-events">
+                    <!-- Events will be rendered here -->
+                  </div>
+                </div>
+
+                <!-- Quote Widget -->
+                <div class="quote-card">
+                  <div class="quote-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z" />
+                    </svg>
+                  </div>
+                  <p class="quote-text" id="daily-quote">"Başarı, küçük adımların bir araya gelmesidir."</p>
+                  <span class="quote-author">- Roy T. Bennett</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Calendar Tab -->
+          <section class="tab-content" id="tab-calendar">
+            <div class="calendar-container">
+              <div class="calendar-header">
+                <div class="calendar-nav">
+                  <button class="btn btn-ghost" id="cal-prev">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <h2 class="calendar-title" id="calendar-title">Mart 2026</h2>
+                  <button class="btn btn-ghost" id="cal-next">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
+                <div class="calendar-views">
+                  <button class="view-btn active" data-view="month">Ay</button>
+                  <button class="view-btn" data-view="week">Hafta</button>
+                  <button class="view-btn" data-view="day">Gün</button>
+                </div>
+                <button class="btn btn-primary" id="add-event-btn">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Etkinlik Ekle
+                </button>
+              </div>
+
+              <div class="calendar-grid" id="calendar-grid">
+                <div class="calendar-weekdays">
+                  <span>Paz</span>
+                  <span>Pzt</span>
+                  <span>Sal</span>
+                  <span>Çar</span>
+                  <span>Per</span>
+                  <span>Cum</span>
+                  <span>Cmt</span>
+                </div>
+                <div class="calendar-days" id="calendar-days">
+                  <!-- Calendar days will be rendered here -->
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Workspace Tab -->
+          <section class="tab-content" id="tab-workspace">
+            <div class="workspace-container">
+              <div class="workspace-header">
+                <div class="workspace-tabs">
+                  <button class="workspace-tab active" data-workspace="projects">Projeler</button>
+                  <button class="workspace-tab" data-workspace="kanban">Kanban</button>
+                  <button class="workspace-tab" data-workspace="timeline">Zaman Çizelgesi</button>
+                </div>
+                <button class="btn btn-primary" id="add-project-btn">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Yeni Proje
+                </button>
+              </div>
+
+              <!-- Projects View -->
+              <div class="workspace-view active" id="view-projects">
+                <div class="projects-grid" id="projects-grid">
+                  <!-- Projects will be rendered here -->
+                </div>
+              </div>
+
+              <!-- Kanban View -->
+              <div class="workspace-view" id="view-kanban">
+                <div class="kanban-board" id="kanban-board">
+                  <div class="kanban-column" data-status="todo">
+                    <div class="kanban-header">
+                      <span class="kanban-title">Yapılacak</span>
+                      <span class="kanban-count" id="count-todo">0</span>
+                    </div>
+                    <div class="kanban-tasks" id="kanban-todo">
+                      <!-- Tasks will be rendered here -->
+                    </div>
+                    <button class="kanban-add-btn" data-status="todo">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      Görev ekle
+                    </button>
+                  </div>
+                  <div class="kanban-column" data-status="in-progress">
+                    <div class="kanban-header">
+                      <span class="kanban-title">Devam Ediyor</span>
+                      <span class="kanban-count" id="count-in-progress">0</span>
+                    </div>
+                    <div class="kanban-tasks" id="kanban-in-progress">
+                      <!-- Tasks will be rendered here -->
+                    </div>
+                    <button class="kanban-add-btn" data-status="in-progress">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      Görev ekle
+                    </button>
+                  </div>
+                  <div class="kanban-column" data-status="in-review">
+                    <div class="kanban-header">
+                      <span class="kanban-title">İnceleme</span>
+                      <span class="kanban-count" id="count-in-review">0</span>
+                    </div>
+                    <div class="kanban-tasks" id="kanban-in-review">
+                      <!-- Tasks will be rendered here -->
+                    </div>
+                    <button class="kanban-add-btn" data-status="in-review">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      Görev ekle
+                    </button>
+                  </div>
+                  <div class="kanban-column" data-status="done">
+                    <div class="kanban-header">
+                      <span class="kanban-title">Tamamlandı</span>
+                      <span class="kanban-count" id="count-done">0</span>
+                    </div>
+                    <div class="kanban-tasks" id="kanban-done">
+                      <!-- Tasks will be rendered here -->
+                    </div>
+                    <button class="kanban-add-btn" data-status="done">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                      Görev ekle
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Timeline View -->
+              <div class="workspace-view" id="view-timeline">
+                <div class="timeline-container" id="timeline-container">
+                  <!-- Timeline will be rendered here -->
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Network Tab -->
+          <section class="tab-content" id="tab-network">
+            <div class="network-container">
+              <div class="network-header">
+                <h2>Ağım</h2>
+                <div class="network-actions">
+                  <button class="btn btn-secondary" id="invite-member-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="8.5" cy="7" r="4" />
+                      <line x1="20" y1="8" x2="20" y2="14" />
+                      <line x1="23" y1="11" x2="17" y2="11" />
+                    </svg>
+                    Üye Davet Et
+                  </button>
+                </div>
+              </div>
+
+              <!-- Team Stats -->
+              <div class="team-stats">
+                <div class="stat-card">
+                  <span class="stat-value" id="team-count">5</span>
+                  <span class="stat-label">Ekip Üyesi</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-value" id="active-projects">3</span>
+                  <span class="stat-label">Aktif Proje</span>
+                </div>
+                <div class="stat-card">
+                  <span class="stat-value" id="tasks-this-week">12</span>
+                  <span class="stat-label">Bu Hafta Görev</span>
+                </div>
+              </div>
+
+              <!-- Team Members -->
+              <div class="team-section">
+                <h3 class="section-title">Ekip Üyeleri</h3>
+                <div class="team-grid" id="team-grid">
+                  <!-- Team members will be rendered here -->
+                </div>
+              </div>
+
+              <!-- Activity Feed -->
+              <div class="activity-section">
+                <h3 class="section-title">Aktivite Akışı</h3>
+                <div class="activity-feed" id="activity-feed">
+                  <!-- Activities will be rendered here -->
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Archive Tab -->
+          <section class="tab-content" id="tab-archive">
+            <div class="archive-container">
+              <div class="archive-header">
+                <h2>Arşiv</h2>
+                <div class="archive-filters">
+                  <div class="search-filter">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="M21 21l-4.35-4.35" />
+                    </svg>
+                    <input type="text" placeholder="Arşivde ara..." id="archive-search">
+                  </div>
+                  <select id="archive-filter" class="archive-select">
+                    <option value="all">Tümü</option>
+                    <option value="task">Görevler</option>
+                    <option value="event">Etkinlikler</option>
+                    <option value="project">Projeler</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Archive Stats -->
+              <div class="archive-stats">
+                <div class="archive-stat">
+                  <span class="archive-stat-value" id="archived-tasks">24</span>
+                  <span class="archive-stat-label">Tamamlanan Görev</span>
+                </div>
+                <div class="archive-stat">
+                  <span class="archive-stat-value" id="archived-events">8</span>
+                  <span class="archive-stat-label">Geçmiş Etkinlik</span>
+                </div>
+                <div class="archive-stat">
+                  <span class="archive-stat-value" id="archived-projects">5</span>
+                  <span class="archive-stat-label">Tamamlanan Proje</span>
+                </div>
+              </div>
+
+              <!-- Archived Items -->
+              <div class="archive-list" id="archive-list">
+                <!-- Archived items will be rendered here -->
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <!-- Bottom Navigation (Mobile) -->
+      <nav class="bottom-nav" id="bottom-nav">
+        <a href="#" class="bottom-nav-item active" data-tab="today">
+          <div class="bottom-nav-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+          </div>
+          <span>Bugün</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-tab="calendar">
+          <div class="bottom-nav-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
+            </svg>
+          </div>
+          <span>Takvim</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-tab="workspace">
+          <div class="bottom-nav-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
+          <span>İş</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-tab="network">
+          <div class="bottom-nav-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </div>
+          <span>Ağım</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-tab="archive">
+          <div class="bottom-nav-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="21 8 21 21 3 21 3 8" />
+              <rect x="1" y="3" width="22" height="5" />
+              <path d="M10 12h4" />
+            </svg>
+          </div>
+          <span>Arşiv</span>
+        </a>
+      </nav>
+
+      <!-- FAB - Floating Action Button for New Task -->
+      <div class="fab-container" id="fab-container">
+        <button class="fab" id="fab-new-task" title="Yeni Görev Ekle">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Task Modal -->
+    <div class="modal" id="task-modal">
+      <div class="modal-overlay"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 id="task-modal-title">Yeni Görev</h3>
+          <button class="modal-close" data-close-modal>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form class="modal-body" id="task-form">
+          <div class="form-group">
+            <label for="task-title">Başlık</label>
+            <input type="text" id="task-title" required placeholder="Görev başlığı">
+          </div>
+          <div class="form-group">
+            <label for="task-description">Açıklama</label>
+            <textarea id="task-description" rows="3" placeholder="Görev açıklaması..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="task-priority">Öncelik</label>
+              <select id="task-priority">
+                <option value="low">Düşük</option>
+                <option value="medium" selected>Orta</option>
+                <option value="high">Yüksek</option>
+                <option value="urgent">Acil</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="task-status">Durum</label>
+              <select id="task-status">
+                <option value="todo">Yapılacak</option>
+                <option value="in-progress">Devam Ediyor</option>
+                <option value="in-review">İnceleme</option>
+                <option value="done">Tamamlandı</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="task-start-date">Başlangıç</label>
+              <input type="datetime-local" id="task-start-date">
+            </div>
+            <div class="form-group">
+              <label for="task-due-date">Bitiş</label>
+              <input type="datetime-local" id="task-due-date">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="task-project">Proje</label>
+            <select id="task-project">
+              <option value="">Proje seçin</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Atanan Kullanıcılar</label>
+            <div class="user-selector" id="task-assignees">
+              <!-- Assignees will be rendered here -->
+            </div>
+          </div>
+          <div class="form-group row-align">
+            <label for="task-is-public" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="task-is-public" style="width: 16px; height: 16px;">
+              Herkese Açık (Bağlantılı arkadaşlara bildirim gönder)
+            </label>
+          </div>
+          <div class="form-group">
+            <label for="task-tags">Etiketler</label>
+            <input type="text" id="task-tags" placeholder="Etiket ekle (virgülle ayırın)">
+          </div>
+          <div class="form-group">
+            <label>Alt Görevler</label>
+            <div class="subtasks-container" id="subtasks-container">
+              <!-- Subtasks will be rendered here -->
+            </div>
+            <button type="button" class="btn btn-ghost add-subtask-btn" id="add-subtask-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Alt görev ekle
+            </button>
+          </div>
+          <div class="form-group">
+            <label>Dosya Eki</label>
+            <div class="file-drop-area" id="file-drop-area">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <span>Dosya sürükle veya tıkla</span>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-modal>İptal</button>
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div class="modal" id="event-modal">
+      <div class="modal-overlay"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 id="event-modal-title">Yeni Etkinlik</h3>
+          <button class="modal-close" data-close-modal>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form class="modal-body" id="event-form">
+          <div class="form-group">
+            <label for="event-title">Başlık</label>
+            <input type="text" id="event-title" required placeholder="Etkinlik başlığı">
+          </div>
+          <div class="form-group">
+            <label for="event-description">Açıklama</label>
+            <textarea id="event-description" rows="3" placeholder="Etkinlik açıklaması..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="event-start">Başlangıç</label>
+              <input type="datetime-local" id="event-start" required>
+            </div>
+            <div class="form-group">
+              <label for="event-end">Bitiş</label>
+              <input type="datetime-local" id="event-end">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="event-location">Konum</label>
+            <input type="text" id="event-location" placeholder="Konum seçin">
+          </div>
+          <div class="form-group">
+            <label for="event-category">Kategori</label>
+            <select id="event-category">
+              <option value="work">İş</option>
+              <option value="personal">Kişisel</option>
+              <option value="family">Aile</option>
+              <option value="health">Sağlık</option>
+              <option value="education">Eğitim</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="event-repeat">Tekrar</label>
+            <select id="event-repeat">
+              <option value="none">Tekrar etme</option>
+              <option value="daily">Günlük</option>
+              <option value="weekly">Haftalık</option>
+              <option value="monthly">Aylık</option>
+              <option value="yearly">Yıllık</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="event-reminder">Hatırlatıcı</label>
+            <select id="event-reminder">
+              <option value="none">Hatırlatıcı yok</option>
+              <option value="5">5 dakika önce</option>
+              <option value="15">15 dakika önce</option>
+              <option value="30">30 dakika önce</option>
+              <option value="60">1 saat önce</option>
+              <option value="1440">1 gün önce</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Katılımcılar</label>
+            <div class="user-selector" id="event-attendees">
+              <!-- Attendees will be rendered here -->
+            </div>
+          </div>
+          <div class="form-group row-align">
+            <label for="event-is-public" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="event-is-public" style="width: 16px; height: 16px;">
+              Herkese Açık (Bağlantılı arkadaşlara bildirim gönder)
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-modal>İptal</button>
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Project Modal -->
+    <div class="modal" id="project-modal">
+      <div class="modal-overlay"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 id="project-modal-title">Yeni Proje</h3>
+          <button class="modal-close" data-close-modal>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <form class="modal-body" id="project-form">
+          <div class="form-group">
+            <label for="project-name">Proje Adı</label>
+            <input type="text" id="project-name" required placeholder="Proje adı">
+          </div>
+          <div class="form-group">
+            <label for="project-description">Açıklama</label>
+            <textarea id="project-description" rows="3" placeholder="Proje açıklaması..."></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="project-color">Renk</label>
+              <input type="color" id="project-color" value="#06b6d4">
+            </div>
+            <div class="form-group">
+              <label for="project-status">Durum</label>
+              <select id="project-status">
+                <option value="active">Aktif</option>
+                <option value="on-hold">Beklemede</option>
+                <option value="completed">Tamamlandı</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="project-start">Başlangıç</label>
+              <input type="date" id="project-start">
+            </div>
+            <div class="form-group">
+              <label for="project-end">Bitiş</label>
+              <input type="date" id="project-end">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Ekip</label>
+            <div class="user-selector" id="project-team">
+              <!-- Team members will be rendered here -->
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" data-close-modal>İptal</button>
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Task Detail Modal -->
+    <div class="modal" id="task-detail-modal">
+      <div class="modal-overlay"></div>
+      <div class="modal-container modal-lg">
+        <div class="modal-header">
+          <h3 id="task-detail-title">Görev Detayı</h3>
+          <button class="modal-close" data-close-modal>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" id="task-detail-content">
+          <!-- Task details will be rendered here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notification-panel">
+      <div class="notification-header">
+        <h3>Bildirimler</h3>
+        <button class="mark-all-read" id="mark-all-read">Tümünü okundu işaretle</button>
+      </div>
+      <div class="notification-list" id="notification-list">
+        <!-- Notifications will be rendered here -->
+      </div>
+    </div>
+
+    <!-- Invite Member Modal -->
+    <div class="modal" id="invite-modal">
+      <div class="modal-overlay"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h3 id="invite-modal-title">Üye Davet Et</h3>
+          <button class="modal-close" data-close-modal>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="invite-search">İsim veya e-posta ile ara</label>
+            <div class="search-box"
+              style="margin-top: 8px; width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right: 8px;">
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input type="text" id="invite-search" placeholder="Arkadaş ara..."
+                style="border: none; outline: none; background: transparent; width: 100%; color: var(--text-primary);">
+            </div>
+          </div>
+          <div class="user-list" id="invite-search-results"
+            style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close-modal>İptal</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+
+</html>

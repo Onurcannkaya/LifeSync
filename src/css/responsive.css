@@ -1,0 +1,255 @@
+/* ========================================
+   RESPONSIVE STYLES
+   ======================================== */
+@media (max-width: 1200px) {
+  .summary-cards { 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 1024px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main-content { margin-left: 0; }
+  .menu-toggle { display: flex; }
+  .today-grid { grid-template-columns: 1fr; }
+  .today-sidebar { order: -1; margin-bottom: var(--space-4); }
+  .summary-cards { 
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+  }
+  .kanban-board { grid-template-columns: repeat(2, 1fr); }
+  .team-stats, .archive-stats { grid-template-columns: repeat(2, 1fr); }
+  .fab-container { bottom: calc(var(--bottom-nav-height) + var(--space-4)); }
+}
+
+@media (max-width: 768px) {
+  .header-right .search-box { display: none; }
+  .bottom-nav { display: flex; }
+  .content-area { 
+    padding: var(--space-3); 
+    padding-bottom: calc(var(--bottom-nav-height) + var(--space-4));
+  }
+  .main-header { 
+    padding: var(--space-3) var(--space-4); 
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .page-title { font-size: 1.25rem; }
+  
+  /* Summary Cards - mobile friendly */
+  .summary-cards { 
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); 
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+  .summary-card { 
+    padding: var(--space-3); 
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .summary-icon { 
+    width: 36px; 
+    height: 36px;
+    margin-bottom: var(--space-2);
+  }
+  .summary-value { 
+    font-size: 1.25rem; 
+    line-height: 1.2;
+  }
+  .summary-label { 
+    font-size: 0.75rem; 
+  }
+  
+  /* Quick Add */
+  .quick-add-floating { 
+    padding: var(--space-3); 
+    margin-bottom: var(--space-4);
+  }
+  .quick-add-form { 
+    flex-direction: column; 
+    gap: var(--space-2);
+  }
+  .quick-add-input { 
+    width: 100%; 
+  }
+  .quick-add-select { 
+    width: 100%; 
+  }
+  .quick-add-form .btn { 
+    width: 100%; 
+    justify-content: center;
+  }
+  
+  /* Tasks Section */
+  .tasks-section { 
+    padding: var(--space-3); 
+  }
+  .section-header { 
+    flex-direction: column; 
+    align-items: flex-start; 
+    gap: var(--space-2);
+  }
+  .task-filters { 
+    width: 100%; 
+    overflow-x: auto;
+  }
+  
+  /* FAB */
+  .fab-container { 
+    bottom: calc(var(--bottom-nav-height) + var(--space-3)); 
+    right: var(--space-3); 
+  }
+  .fab { 
+    width: 52px; 
+    height: 52px; 
+  }
+  
+  /* Calendar */
+  .calendar-header { 
+    flex-direction: column; 
+    align-items: flex-start; 
+    gap: var(--space-3);
+  }
+  .calendar-views { 
+    order: 1; 
+    width: 100%; 
+  }
+  .calendar-views .view-btn { 
+    flex: 1; 
+    text-align: center; 
+  }
+  .calendar-day { 
+    min-height: 50px; 
+    padding: var(--space-1); 
+  }
+  .day-events { 
+    display: none; 
+  }
+  
+  /* Kanban */
+  .kanban-board { 
+    grid-template-columns: 1fr; 
+    overflow-x: auto; 
+    display: flex; 
+    gap: var(--space-3); 
+  }
+  .kanban-column { 
+    min-width: 260px; 
+    flex-shrink: 0; 
+  }
+  
+  /* Stats */
+  .team-stats, .archive-stats { 
+    grid-template-columns: 1fr; 
+    gap: var(--space-2);
+  }
+  
+  /* Forms */
+  .form-row { 
+    grid-template-columns: 1fr; 
+    gap: var(--space-3);
+  }
+  
+  /* Network */
+  .network-header { 
+    flex-direction: column; 
+    align-items: flex-start; 
+    gap: var(--space-3); 
+  }
+  
+  /* Archive */
+  .archive-header { 
+    flex-direction: column; 
+    gap: var(--space-3); 
+  }
+  .archive-filters { 
+    flex-direction: column; 
+    width: 100%; 
+  }
+  .search-filter { 
+    width: 100%; 
+  }
+  
+  /* Modals */
+  .modal-container { 
+    max-width: 100%; 
+    max-height: 100%; 
+    border-radius: 0;
+    margin: 0;
+    height: 100%;
+  }
+  .modal-body {
+    padding: var(--space-4);
+    overflow-y: auto;
+  }
+  .notification-panel { 
+    left: var(--space-3); 
+    right: var(--space-3); 
+    width: auto; 
+  }
+  .auth-card { 
+    padding: var(--space-4); 
+    margin: var(--space-3);
+  }
+  
+  /* Today Grid */
+  .today-grid { 
+    gap: var(--space-3); 
+  }
+  
+  /* Workspace */
+  .workspace-tabs {
+    overflow-x: auto;
+    width: 100%;
+  }
+  .workspace-tab {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .summary-cards { 
+    grid-template-columns: 1fr 1fr; 
+  }
+  .summary-card {
+    padding: var(--space-2) var(--space-3);
+  }
+  .summary-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .summary-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .summary-value {
+    font-size: 1.1rem;
+  }
+  .summary-label {
+    font-size: 0.7rem;
+  }
+  
+  .content-area {
+    padding: var(--space-2);
+    padding-bottom: calc(var(--bottom-nav-height) + var(--space-3));
+  }
+  
+  .page-title {
+    font-size: 1.1rem;
+  }
+  
+  .fab {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .summary-cards { grid-template-columns: repeat(4, 1fr); }
+  .projects-grid { grid-template-columns: repeat(4, 1fr); }
+  .team-grid { grid-template-columns: repeat(5, 1fr); }
+}
