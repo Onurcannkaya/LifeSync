@@ -1,104 +1,103 @@
-# LifeSync - Akıllı PWA Asistanı
+# LifeSync V2 - Akıllı PWA Asistanı
 
-Modern, hızlı ve profesyonel kişisel asistan uygulaması. Takvim, görev yönetimi, kanban panosu ve ekip ağı özellikleri tek uygulamada.
+Modern, hızlı ve profesyonel kişisel asistan uygulaması. Takvim, görev yönetimi, kanban panosu ve ekip ağı (social network) özellikleri tek bir platformda buluşuyor. 
 
-## 🚀 Özellikler
+Projenin **V2 versiyonunda** yerel prototipten çıkılmış; **Supabase, OneSignal, Vite ve PWA (Service Worker)** entegrasyonlarıyla tam teşekküllü ve yayına hazır bir Production uygulamasına dönüşmüştür.
 
-- **5 Ana Sekme**: Bugün, Takvim, Workspace (Kanban), Ağ, Arşiv
-- **Görev Yönetimi**: Proje bazlı, etiketler, öncelikler
-- **Takvim**: Gün/Hafta/Ay görünümleri, etkinlikler
-- **Kanban Panosu**: Sürükle-bırak ile görev yönetimi
-- **Ekip Ağı**: Takım üyeleri ile işbirliği
-- **PWA**: Yükleyebilir, çevrimdışı çalışır
-- **Bildirimler**: Tarayıcı + OneSignal push bildirimleri
-- **Karanlık Mod**: Gece kullanımı için
-- **Klavye Kısayolları**: Ctrl+K (ara), Ctrl+N (yeni görev), Ctrl+E (yeni etkinlik), Ctrl+D (karanlık mod)
+---
 
-## 🛠️ Kurulum
+## 🚀 Öne Çıkan Özellikler
 
-### 1. Projeyi İndir
+- **Modüler Mimari**: Vite ile derlenen, temiz ve modüler Vanilla JS altyapısı.
+- **Gerçek Veritabanı & Kimlik Doğrulama**: Supabase Auth (E-posta/Şifre) ve PostgreSQL CRUD işlemleri.
+- **Güvenlik (RLS)**: Her kullanıcı sadece kendi görev ve etkinliklerini görebilir (Row Level Security).
+- **Sosyal Ağ ("Ağ" Sekmesi)**: Arkadaş ekleme, onaylama, reddetme mekanizması ve canlı arkadaş listesi.
+- **Push Bildirimler**: OneSignal REST API entegrasyonu ile gerçek zamanlı bildirim gönderimi.
+- **PWA (Progressive Web App)**: 
+  - `sw.js` (Service Worker) ve Cache First stratejisi ile çevrimdışı (offline) çalışma.
+  - Mobil cihazlarda ana ekrana "App" olarak eklenebilme (72px - 512px icon seti).
+- **Kullanıcı Deneyimi (UX)**: 
+  - Gelişmiş "Splash Screen" (Yükleme Ekranı).
+  - Modern, karanlık tema ağırlıklı cam (glassmorphism) tasarımı.
+  - Klavye Kısayolları (Ctrl+K, Ctrl+N vb.).
+
+---
+
+## 🛠️ Kurulum ve Geliştirme
+
+Projeyi yerel ortamınızda ayağa kaldırmak için aşağıdaki adımları izleyin.
+
+### 1. Bağımlılıkların Kurulması
 ```bash
-git clone <repo-url>
-cd lifesync
+git clone https://github.com/Onurcannkaya/LifeSync.git
+cd LifeSync
+npm install
 ```
 
-### 2. Supabase Kurulumu (Veritabanı)
-1. https://supabase.com adresinden ücretsiz hesap oluşturun
-2. Yeni proje oluşturun
-3. SQL Editor'de aşağıdaki tabloları oluşturun:
+### 2. Ortam Değişkenleri (.env)
+Proje kök dizininde bulunan `.env.example` dosyasını kopyalayarak `.env` adında yeni bir dosya oluşturun:
 
-```sql
--- Users tablosu
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  name TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
--- Tasks tablosu
-CREATE TABLE tasks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
-  title TEXT NOT NULL,
-  description TEXT,
-  project TEXT,
-  priority TEXT DEFAULT 'medium',
-  status TEXT DEFAULT 'pending',
-  due_date TIMESTAMP,
-  tags TEXT[],
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Events tablosu
-CREATE TABLE events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
-  title TEXT NOT NULL,
-  description TEXT,
-  start_time TIMESTAMP NOT NULL,
-  end_time TIMESTAMP,
-  color TEXT,
-  attendees TEXT[],
-  created_at TIMESTAMP DEFAULT NOW()
-);
+VITE_ONESIGNAL_APP_ID=your_onesignal_app_id
+VITE_ONESIGNAL_REST_API_KEY=your_onesignal_rest_api_key
 ```
 
-### 3. OneSignal Kurulumu (Bildirimler)
-1. https://onesignal.com adresinden ücretsiz hesap oluşturun
-2. Yeni uygulama oluşturun (Web Push)
-3. **Önemli**: Uygulamayı yayına alın (Go Live)
-4. App ID'yi alın ve `app.js` dosyasındaki `ONESIGNAL_APP_ID` kısmına ekleyin
+### 3. Supabase Veritabanı Hazırlığı
+Supabase SQL Editor üzerinden aşağıdaki SQL komutlarını çalıştırarak tabloları oluşturun:
 
-### 4. Vercel Deployment
+1. `supabase-schema.sql` (Görev, Etkinlik, Proje tabloları ve RLS politikaları)
+2. `supabase-faz1-trigger.sql` (Yeni kullanıcı kayıt olduğunda `public.users` tablosunu besleyen otomatik Trigger)
+
+### 4. Geliştirme Sunucusunu Başlatma
 ```bash
-npm i -g vercel
-vercel --prod
+npm run dev
+```
+Uygulama varsayılan olarak `http://localhost:3000` adresinde çalışacaktır.
+
+---
+
+## 📦 Üretim (Production) Derlemesi
+
+Uygulamayı Vercel, Netlify veya Render.com gibi bir sunucuya yüklemeden önce üretim paketini (build) oluşturmak için:
+
+```bash
+npm run build
 ```
 
-Veya GitHub'a yükleyip Vercel'den import edin.
+Bu komut:
+1. Tüm CSS/JS dosyalarını küçültür (minify).
+2. Kaynak haritalarını (sourcemaps) kapatır.
+3. `sw.js` ve manifest dosyalarını `dist/` klasörüne kopyalar.
 
-## 📱 Kullanım
+Derlenen projeyi yerelde test etmek için:
+```bash
+npx serve dist
+```
 
-- **Ctrl+K**: Hızlı arama
-- **Ctrl+N**: Yeni görev
-- **Ctrl+E**: Yeni etkinlik
-- **Ctrl+D**: Karanlık mod toggle
-- **Ctrl+1-5**: Sekmeler arası geçiş
+---
 
 ## 🗂️ Proje Yapısı
 
 ```
-├── index.html      # Ana HTML yapısı
-├── styles.css      # CSS stiller (cyan/blue tema)
-├── app.js          # JavaScript uygulaması
-├── manifest.json   # PWA manifest
-├── sw.js          # Service Worker
-├── README.md      # Bu dosya
-└── INSTRUCTION.md # Detaylı kullanım kılavuzu
+├── src/
+│   ├── css/            # Modüler CSS dosyaları (auth.css, layout.css, modals.css)
+│   ├── js/
+│   │   ├── render/     # Uİ bileşenlerini çizen modüller (today, calendar, network vb.)
+│   │   ├── utils/      # Supabase, OneSignal, Store ve ErrorHandler servisleri
+│   │   └── app.js      # Ana uygulama döngüsü ve başlatıcı (entry-point)
+│   ├── sw.js           # PWA Service Worker (Offline Cache)
+│   └── index.html      # Ana HTML çerçevesi ve Splash Screen
+├── dist/               # Derlenmiş (Build) çıktı klasörü
+├── .env                # Gizli API Anahtarları (Git'e yüklenmez)
+├── vite.config.js      # Vite Derleme Ayarları
+└── supabase-schema.sql # Veritabanı Tablo ve Yetki Şemaları
 ```
+
+---
 
 ## 📋 Lisans
 
-Onurcan KAYA
+**Proje Sahibi:** Onurcan KAYA
