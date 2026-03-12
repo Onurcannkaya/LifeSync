@@ -396,24 +396,29 @@ function initEventListeners() {
       const priority = $('#quick-priority');
 
       if (input && input.value.trim()) {
-        const task = {
-          id: Date.now().toString(),
-          title: input.value.trim(),
-          priority: priority?.value || 'medium',
-          status: 'todo',
-          completed: false,
-          createdAt: new Date().toISOString()
-        };
+        const userId = AppState.currentUser?.id;
+        
+        try {
+          // Use Supabase createTask for persistence
+          const newTask = await supabaseCreateTask({
+            user_id: userId,
+            title: input.value.trim(),
+            priority: priority?.value || 'medium',
+            status: 'todo'
+          });
 
-        await storage.saveTask(task);
-        store.setState({ tasks: [...store.getState().tasks, task] }, 'add-task');
+          store.setState({ tasks: [newTask, ...store.getState().tasks] }, 'add-task');
 
-        input.value = '';
-        window.showToast('Görev eklendi!');
+          input.value = '';
+          window.showToast('Görev eklendi!');
 
-        // Refresh the today view
-        if (AppState.currentTab === 'today') {
-          renderToday();
+          // Refresh the today view
+          if (AppState.currentTab === 'today') {
+            renderToday();
+          }
+        } catch (err) {
+          console.error('Quick add task error:', err);
+          window.showToast('Görev eklenemedi: ' + (err.message || 'Bilinmeyen hata'));
         }
       }
     });
