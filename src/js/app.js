@@ -44,9 +44,33 @@ const AppState = {
 window.AppState = AppState;
 
 /**
+ * Hide the splash screen and reveal the app container.
+ */
+function hideSplash() {
+  const splash = document.getElementById('app-splash');
+  const app = document.getElementById('app');
+
+  if (app) app.style.display = 'block';
+
+  if (splash) {
+    splash.style.opacity = '0';
+    setTimeout(() => {
+      splash.style.display = 'none';
+      splash.remove();
+    }, 400); // matches CSS transition duration
+  }
+}
+
+/**
  * Initialize Application
  */
 async function init() {
+  // Safety net: force-hide splash after 5 seconds no matter what
+  const splashTimeout = setTimeout(() => {
+    console.warn('Splash safety timeout triggered.');
+    hideSplash();
+  }, 5000);
+
   try {
     // Check Supabase auth session
     const session = await getSession();
@@ -96,6 +120,9 @@ async function init() {
     ErrorHandler.handle(error, 'App Initialization');
     // Fallback: show auth screen on error
     showAuthScreen();
+  } finally {
+    clearTimeout(splashTimeout);
+    hideSplash();
   }
 }
 
