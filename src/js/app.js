@@ -387,6 +387,16 @@ function initEventListeners() {
     });
   }
 
+  // PWA Refresh button
+  const refreshBtn = $('#refresh-app-btn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      refreshBtn.style.transition = 'transform 0.5s ease';
+      refreshBtn.style.transform = 'rotate(360deg)';
+      setTimeout(() => window.location.reload(), 300);
+    });
+  }
+
   // Quick add form
   const quickAddForm = $('#quick-add-form');
   if (quickAddForm) {
