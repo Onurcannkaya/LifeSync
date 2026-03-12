@@ -345,20 +345,6 @@ function switchTab(tab) {
   }
 }
 
-/**
- * Initialize Sidebar
- */
-function initSidebar() {
-  const menuToggle = $('#menu-toggle');
-  const sidebar = $('#sidebar');
-
-  if (menuToggle && sidebar) {
-    menuToggle.addEventListener('click', () => {
-      AppState.sidebarOpen = !AppState.sidebarOpen;
-      sidebar.classList.toggle('open', AppState.sidebarOpen);
-    });
-  }
-}
 
 /**
  * Initialize Modals with Event Delegation
