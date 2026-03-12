@@ -12,7 +12,8 @@ import {
   signIn, signUp, signOut, getSession, onAuthStateChange,
   createTask as supabaseCreateTask, updateTask as supabaseUpdateTask,
   createEvent as supabaseCreateEvent,
-  createProject as supabaseCreateProject
+  createProject as supabaseCreateProject,
+  uploadFile
 } from './utils/supabase.js';
 
 // Import renderers
@@ -589,7 +590,6 @@ function initModalForms() {
         // Handle Attachments Upload
         const fileInput = $('#task-attachment');
         let attachments = [];
-        const { uploadFile } = await import('./utils/supabase.js');
 
         if (fileInput && fileInput.files.length > 0) {
           const uploadBtn = $('#task-form').querySelector('button[type="submit"]');
