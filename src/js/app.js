@@ -165,6 +165,55 @@ function showMainApp() {
 }
 
 /**
+ * Initialize Sidebar Toggle (Mobile Open/Close)
+ */
+function initSidebar() {
+  const sidebar = $('#sidebar');
+  const sidebarToggle = $('#sidebar-toggle');
+  const menuToggle = $('#menu-toggle');
+
+  // Close button inside sidebar (the "<" icon)
+  if (sidebarToggle && sidebar) {
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      AppState.sidebarOpen = false;
+    });
+  }
+
+  // Hamburger menu button on the header (opens sidebar on mobile)
+  if (menuToggle && sidebar) {
+    menuToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+      AppState.sidebarOpen = sidebar.classList.contains('open');
+    });
+  }
+
+  // Close sidebar when clicking outside on mobile
+  document.addEventListener('click', (e) => {
+    if (!sidebar || !AppState.sidebarOpen) return;
+    if (window.innerWidth > 1024) return;
+    if (!sidebar.contains(e.target) && !menuToggle?.contains(e.target)) {
+      sidebar.classList.remove('open');
+      AppState.sidebarOpen = false;
+    }
+  });
+
+  // Logout button
+  const logoutBtn = $('#logout-btn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await signOut();
+        // onAuthStateChange handler will take care of cleanup and showing auth screen
+      } catch (err) {
+        console.error('Logout error:', err);
+        window.showToast('Çıkış yapılamadı: ' + err.message);
+      }
+    });
+  }
+}
+
+/**
  * Initialize Navigation with Event Delegation
  */
 function initNavigation() {
