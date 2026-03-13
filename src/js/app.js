@@ -11,7 +11,7 @@ import {
   searchProfiles, addFriend,
   signIn, signUp, signOut, getSession, onAuthStateChange,
   createTask as supabaseCreateTask, updateTask as supabaseUpdateTask,
-  createEvent as supabaseCreateEvent,
+  createEvent as supabaseCreateEvent, updateEvent as supabaseUpdateEvent,
   createProject as supabaseCreateProject,
   uploadFile
 } from './utils/supabase.js';
@@ -581,6 +581,8 @@ function initModalForms() {
       const description = $('#task-description').value;
       const priority = $('#task-priority').value;
       const status = $('#task-status').value;
+      const start_date = $('#task-start-date').value || null;
+      const due_date = $('#task-due-date').value || null;
 
       const modal = $('#task-modal');
       const editTaskId = modal.dataset.editTaskId;
@@ -614,7 +616,7 @@ function initModalForms() {
           // Update existing task in Supabase
           // If editing, we append new attachments to existing ones or just replace (simplification: replace/add new)
           // For a true system we'd merge, but for this step we will just set the new ones if any were uploaded
-          const updatePayload = { title, description, priority, status };
+          const updatePayload = { title, description, priority, status, start_date, due_date };
           if (attachments.length > 0) {
              const existState = store.getState().tasks.find(t => t.id === editTaskId);
              updatePayload.attachments = [...(existState?.attachments || []), ...attachments];
@@ -635,6 +637,8 @@ function initModalForms() {
             description,
             priority,
             status,
+            start_date,
+            due_date,
             attachments
           });
 
@@ -667,6 +671,140 @@ function initModalForms() {
         if (typeof renderWorkspace === 'function') renderWorkspace();
       }
     });
+
+    // Event form
+    const eventForm = $('#event-form');
+    if (eventForm) {
+      eventForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = $('#event-title').value;
+        const description = $('#event-description').value;
+        const start_time = $('#event-start').value || null;
+        const end_time = $('#event-end').value || null;
+        const location = $('#event-location').value || '';
+        const category = $('#event-category').value || 'work';
+        const isPublic = $('#event-is-public')?.checked;
+
+        const modal = $('#event-modal');
+        const editEventId = modal.dataset.editEventId;
+        const userId = AppState.currentUser?.id;
+
+        try {
+          // Handle Attachments Upload
+          const fileInput = $('#event-attachment');
+          let attachments = [];
+
+          if (fileInput && fileInput.files.length > 0) {
+            const uploadBtn = $('#event-form').querySelector('button[type="submit"]');
+            const origText = uploadBtn.innerHTML;
+            uploadBtn.innerHTML = 'Dosyalar Yükleniyor...';
+            uploadBtn.disabled = true;
+
+            for (let i = 0; i < fileInput.files.length; i++) {
+              const file = fileInput.files[i];
+              const fileExt = file.name.split('.').pop();
+              const fileName = `event-${Date.now()}-${i}.${fileExt}`;
+              const filePath = `${userId}/${fileName}`;
+              const publicUrl = await uploadFile('attachments', filePath, file);
+              attachments.push({ name: file.name, url: publicUrl, type: file.type });
+            }
+
+            uploadBtn.innerHTML = origText;
+            uploadBtn.disabled = false;
+          }
+
+          if (editEventId) {
+            const updatePayload = { title, description, start_time, end_time, location, category };
+            if (attachments.length > 0) {
+               const existState = store.getState().events.find(ev => ev.id === editEventId);
+               updatePayload.attachments = [...(existState?.attachments || []), ...attachments];
+            }
+
+            const updated = await supabaseUpdateEvent(editEventId, updatePayload);
+            const state = store.getState();
+            const events = state.events.map(ev =>
+              ev.id === editEventId ? { ...ev, ...updated } : ev
+            );
+            store.setState({ events }, 'update-event');
+            window.showToast('Etkinlik güncellendi!');
+          } else {
+            const newEvent = await supabaseCreateEvent({
+              user_id: userId,
+              title,
+              description,
+              start_time,
+              end_time,
+              location,
+              category,
+              attachments
+            });
+
+            store.setState({ events: [newEvent, ...store.getState().events] }, 'add-event');
+            window.showToast('Etkinlik oluşturuldu!');
+
+            if (isPublic) {
+              onesignal.sendNotification(`Yeni Etkinlik: ${title}`, description || "Takvimine bir etkinlik eklendi.", false, [userId]);
+            }
+          }
+        } catch (err) {
+          console.error('Event save error:', err);
+          window.showToast('Etkinlik kaydedilemedi: ' + (err.message || 'Bilinmeyen hata'));
+          const uploadBtn = $('#event-form').querySelector('button[type="submit"]');
+          if(uploadBtn) {
+             uploadBtn.innerHTML = 'Kaydet';
+             uploadBtn.disabled = false;
+          }
+        }
+
+        closeModal();
+        eventForm.reset();
+        const eventFileDisplay = $('#event-file-name-display');
+        if (eventFileDisplay) eventFileDisplay.textContent = 'Dosya seçmek için tıklayın';
+        delete modal.dataset.editEventId;
+
+        if (AppState.currentTab === 'today') {
+           if (typeof renderToday === 'function') renderToday();
+        }
+      });
+    }
+
+    // File Input UI Handler for Events
+    const eventDropArea = $('#event-file-drop-area');
+    const eventFileInput = $('#event-attachment');
+    const eventFileNameDisplay = $('#event-file-name-display');
+
+    if (eventDropArea && eventFileInput) {
+      eventDropArea.addEventListener('click', () => eventFileInput.click());
+      eventFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          const names = Array.from(e.target.files).map(f => f.name).join(', ');
+          if (eventFileNameDisplay) eventFileNameDisplay.textContent = names;
+        } else {
+          if (eventFileNameDisplay) eventFileNameDisplay.textContent = 'Dosya seçmek için tıklayın';
+        }
+      });
+      // Handle drag and drop for events
+      eventDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        eventDropArea.style.borderColor = 'var(--primary-color)';
+        eventDropArea.style.backgroundColor = 'var(--bg-secondary)';
+      });
+      eventDropArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        eventDropArea.style.borderColor = 'var(--border-color)';
+        eventDropArea.style.backgroundColor = 'transparent';
+      });
+      eventDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        eventDropArea.style.borderColor = 'var(--border-color)';
+        eventDropArea.style.backgroundColor = 'transparent';
+        if (e.dataTransfer.files.length > 0) {
+          eventFileInput.files = e.dataTransfer.files;
+          const names = Array.from(e.dataTransfer.files).map(f => f.name).join(', ');
+          if (eventFileNameDisplay) eventFileNameDisplay.textContent = names;
+        }
+      });
+    }
 
     // File Input UI Handler for Tasks
     const taskDropArea = $('#file-drop-area');
