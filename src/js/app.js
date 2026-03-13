@@ -405,10 +405,15 @@ function initEventListeners() {
       e.preventDefault();
       const input = $('#quick-task-input');
       const priority = $('#quick-priority');
+      const submitBtn = quickAddForm.querySelector('button[type="submit"]');
 
       if (input && input.value.trim()) {
         const userId = AppState.currentUser?.id;
         
+        // Disable form to prevent double submits
+        if (submitBtn) submitBtn.disabled = true;
+        input.disabled = true;
+
         try {
           // Use Supabase createTask for persistence
           const newTask = await supabaseCreateTask({
@@ -418,7 +423,11 @@ function initEventListeners() {
             status: 'todo'
           });
 
-          store.setState({ tasks: [newTask, ...store.getState().tasks] }, 'add-task');
+          // Prevent duplication if realtime insert was faster
+          const currentTasks = store.getState().tasks;
+          if (!currentTasks.some(t => t.id === newTask.id)) {
+            store.setState({ tasks: [newTask, ...currentTasks] }, 'add-task');
+          }
 
           input.value = '';
           window.showToast('Görev eklendi!');
@@ -430,6 +439,11 @@ function initEventListeners() {
         } catch (err) {
           console.error('Quick add task error:', err);
           window.showToast('Görev eklenemedi: ' + (err.message || 'Bilinmeyen hata'));
+        } finally {
+          // Re-enable form
+          if (submitBtn) submitBtn.disabled = false;
+          input.disabled = false;
+          input.focus();
         }
       }
     });
@@ -588,16 +602,20 @@ function initModalForms() {
       const editTaskId = modal.dataset.editTaskId;
       const userId = AppState.currentUser?.id;
 
+      const submitBtn = taskForm.querySelector('button[type="submit"]');
+      const origText = submitBtn ? submitBtn.innerHTML : 'Kaydet';
+      if (submitBtn) {
+        submitBtn.innerHTML = 'Kaydediliyor...';
+        submitBtn.disabled = true;
+      }
+
       try {
         // Handle Attachments Upload
         const fileInput = $('#task-attachment');
         let attachments = [];
 
         if (fileInput && fileInput.files.length > 0) {
-          const uploadBtn = $('#task-form').querySelector('button[type="submit"]');
-          const origText = uploadBtn.innerHTML;
-          uploadBtn.innerHTML = 'Dosyalar Yükleniyor...';
-          uploadBtn.disabled = true;
+          if (submitBtn) submitBtn.innerHTML = 'Dosyalar Yükleniyor...';
 
           for (let i = 0; i < fileInput.files.length; i++) {
             const file = fileInput.files[i];
@@ -607,9 +625,6 @@ function initModalForms() {
             const publicUrl = await uploadFile('attachments', filePath, file);
             attachments.push({ name: file.name, url: publicUrl, type: file.type });
           }
-
-          uploadBtn.innerHTML = origText;
-          uploadBtn.disabled = false;
         }
 
         if (editTaskId) {
@@ -642,7 +657,10 @@ function initModalForms() {
             attachments
           });
 
-          store.setState({ tasks: [newTask, ...store.getState().tasks] }, 'add-task');
+          const currentTasks = store.getState().tasks;
+          if (!currentTasks.some(t => t.id === newTask.id)) {
+            store.setState({ tasks: [newTask, ...currentTasks] }, 'add-task');
+          }
           window.showToast('Görev oluşturuldu!');
 
           const isPublic = $('#task-is-public')?.checked;
@@ -653,10 +671,10 @@ function initModalForms() {
       } catch (err) {
         console.error('Task save error:', err);
         window.showToast('Görev kaydedilemedi: ' + (err.message || 'Bilinmeyen hata'));
-        const uploadBtn = $('#task-form').querySelector('button[type="submit"]');
-        if(uploadBtn) {
-           uploadBtn.innerHTML = 'Kaydet';
-           uploadBtn.disabled = false;
+      } finally {
+        if (submitBtn) {
+          submitBtn.innerHTML = origText;
+          submitBtn.disabled = false;
         }
       }
 
@@ -689,16 +707,20 @@ function initModalForms() {
         const editEventId = modal.dataset.editEventId;
         const userId = AppState.currentUser?.id;
 
+        const submitBtn = eventForm.querySelector('button[type="submit"]');
+        const origText = submitBtn ? submitBtn.innerHTML : 'Kaydet';
+        if (submitBtn) {
+          submitBtn.innerHTML = 'Kaydediliyor...';
+          submitBtn.disabled = true;
+        }
+
         try {
           // Handle Attachments Upload
           const fileInput = $('#event-attachment');
           let attachments = [];
 
           if (fileInput && fileInput.files.length > 0) {
-            const uploadBtn = $('#event-form').querySelector('button[type="submit"]');
-            const origText = uploadBtn.innerHTML;
-            uploadBtn.innerHTML = 'Dosyalar Yükleniyor...';
-            uploadBtn.disabled = true;
+            if (submitBtn) submitBtn.innerHTML = 'Dosyalar Yükleniyor...';
 
             for (let i = 0; i < fileInput.files.length; i++) {
               const file = fileInput.files[i];
@@ -708,9 +730,6 @@ function initModalForms() {
               const publicUrl = await uploadFile('attachments', filePath, file);
               attachments.push({ name: file.name, url: publicUrl, type: file.type });
             }
-
-            uploadBtn.innerHTML = origText;
-            uploadBtn.disabled = false;
           }
 
           if (editEventId) {
@@ -739,7 +758,10 @@ function initModalForms() {
               attachments
             });
 
-            store.setState({ events: [newEvent, ...store.getState().events] }, 'add-event');
+            const currentEvents = store.getState().events;
+            if (!currentEvents.some(e => e.id === newEvent.id)) {
+              store.setState({ events: [newEvent, ...currentEvents] }, 'add-event');
+            }
             window.showToast('Etkinlik oluşturuldu!');
 
             if (isPublic) {
@@ -749,10 +771,10 @@ function initModalForms() {
         } catch (err) {
           console.error('Event save error:', err);
           window.showToast('Etkinlik kaydedilemedi: ' + (err.message || 'Bilinmeyen hata'));
-          const uploadBtn = $('#event-form').querySelector('button[type="submit"]');
-          if(uploadBtn) {
-             uploadBtn.innerHTML = 'Kaydet';
-             uploadBtn.disabled = false;
+        } finally {
+          if (submitBtn) {
+            submitBtn.innerHTML = origText;
+            submitBtn.disabled = false;
           }
         }
 
