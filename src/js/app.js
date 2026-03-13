@@ -518,7 +518,7 @@ function initEventListeners() {
       resultsContainer.innerHTML = profiles.map(p => `
         <div class="user-result" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="${p.avatar}" alt="${p.name}" style="width: 32px; height: 32px; border-radius: 50%;">
+            <img src="${p.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.email}`}" alt="${p.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
             <div>
               <div style="font-weight: 500; font-size: 0.875rem; color: var(--text-primary);">${p.name}</div>
               <div style="font-size: 0.75rem; color: var(--text-muted);">${p.email}</div>
